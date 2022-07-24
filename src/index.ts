@@ -5,7 +5,7 @@ import * as promises from 'node:fs/promises';
 import * as readline from 'readline';
 
 export interface SimpleMap {
-  [key: string]: string|number|boolean|Date;
+  [key: string]: string | number | boolean | Date;
 }
 export type DataType = 'ObjectId' | 'date' | 'datetime' | 'time'
   | 'boolean' | 'number' | 'integer' | 'string' | 'text'
@@ -46,6 +46,7 @@ export interface BaseAttribute {
   typeof?: Attributes;
   true?: string | number;
   false?: string | number;
+  getString?: (v: any) => string;
 }
 export interface Attribute extends BaseAttribute {
   length?: number;
@@ -186,12 +187,12 @@ export class NameChecker {
     return false;
   }
 }
-export function getPrefix(s: string, date: Date, offset?: number, separator?: string): string {
+export function getPrefix(v: string, date: Date, offset?: number, separator?: string): string {
   if (offset !== undefined) {
     const d = addDays(date, offset);
-    return s + dateToString(d, separator);
+    return v + dateToString(d, separator);
   } else {
-    return s + dateToString(date, separator);
+    return v + dateToString(date, separator);
   }
 }
 export function dateToString(date: Date, separator?: string): string {
@@ -255,7 +256,7 @@ export interface StreamOptions {
   start?: number | undefined;
   highWaterMark?: number | undefined;
 }
-export const options: StreamOptions = { flags: 'a', encoding: 'utf-8'};
+export const options: StreamOptions = { flags: 'a', encoding: 'utf-8' };
 // tslint:disable-next-line:max-classes-per-file
 export class FileWriter {
   // suffix: string;
@@ -312,5 +313,149 @@ export function createWriteStream(dir: string, filename: string, opts?: BufferEn
     return fs.createWriteStream(dir + filename, opts);
   } else {
     return fs.createWriteStream(dir + '/' + filename, opts);
+  }
+}
+const re = /"/g;
+const e = '';
+const s = 'string';
+const n = 'number';
+const b = '""';
+export function toDelimiter<T>(obj: T, separator: string, end?: string): string {
+  const o: any = obj;
+  const keys = Object.keys(o);
+  const cols: string[] = [];
+  // tslint:disable-next-line:prefer-for-of
+  for (let i = 0; i < keys.length; i++) {
+    const name = keys[i];
+    const v = o[name];
+    if (!v) {
+      cols.push(e);
+    } else {
+      if (typeof v === s) {
+        if (s.indexOf(',') >= 0) {
+          cols.push('"' + v.replace(re, b) + '"');
+        } else {
+          cols.push(v);
+        }
+      } else if (v instanceof Date) {
+        cols.push(v.toISOString());
+      } else if (typeof v === n) {
+        cols.push(v.toString());
+      } else {
+        cols.push('' + v);
+      }
+    }
+  }
+  if (end && end.length > 0) {
+    cols.push(end);
+  }
+  return cols.join(separator);
+}
+export function toDelimiterWithSchema<T>(obj: T, separator: string, attrs: Attributes, end?: string): string {
+  const o: any = obj;
+  const keys = Object.keys(attrs);
+  const cols: string[] = [];
+  // tslint:disable-next-line:prefer-for-of
+  for (let i = 0; i < keys.length; i++) {
+    const name = keys[i];
+    const v = o[name];
+    const attr = attrs[name];
+    if (!v) {
+      cols.push(e);
+    } else {
+      if (attr.getString) {
+        const v2 = attr.getString(v);
+        cols.push(v2);
+      } else {
+        if (typeof v === s) {
+          if (s.indexOf(separator) >= 0) {
+            cols.push('"' + v.replace(re, b) + '"');
+          } else {
+            cols.push(v);
+          }
+        } else if (v instanceof Date) {
+          cols.push(v.toISOString());
+        } else if (typeof v === n) {
+          cols.push(v.toString());
+        } else {
+          cols.push('' + v);
+        }
+      }
+    }
+  }
+  const ss = cols.join(separator);
+  if (end && end.length > 0) {
+    return ss + end;
+  } else {
+    return ss;
+  }
+}
+// tslint:disable-next-line:max-classes-per-file
+export class DelimiterFormatter<T> {
+  constructor(public separator: string, public attributes: Attributes, end?: string) {
+    this.end = (end && end.length > 0 ? end : '\n');
+    this.format = this.format.bind(this);
+  }
+  end: string;
+  format(v: T): string {
+    return toDelimiterWithSchema<T>(v, this.separator, this.attributes, this.end);
+  }
+}
+export function pad(v: string, l: number, p: string): string {
+  if (v.length > l) {
+    return v;
+  } else {
+    const c = l - v.length;
+    const a: string[] = [];
+    for (let i = 0; i < c; i++) {
+      a.push(p);
+    }
+    return a.join('') + v;
+  }
+}
+export function toFixedLength<T>(obj: T, attrs: Attributes, p: string, end?: string): string {
+  const o: any = obj;
+  const keys = Object.keys(attrs);
+  const cols: string[] = [];
+  // tslint:disable-next-line:prefer-for-of
+  for (let i = 0; i < keys.length; i++) {
+    const name = keys[i];
+    const v = o[name];
+    const attr = attrs[name];
+    let v2 = '';
+    if (v) {
+      if (attr.getString) {
+        v2 = attr.getString(v);
+      } else {
+        if (typeof v === s) {
+          v2 = v;
+        } else if (v instanceof Date) {
+          v2 = v.toISOString();
+        } else if (typeof v === n) {
+          v2 = v.toString();
+        } else {
+          v2 = '' + v;
+        }
+      }
+    }
+    const l = (attr.length && attr.length > 0 ? attr.length : 10);
+    cols.push(pad(v2, l, p));
+  }
+  if (end && end.length > 0) {
+    cols.push(end);
+  }
+  return cols.join('');
+}
+// tslint:disable-next-line:max-classes-per-file
+export class FixedLengthFormatter<T> {
+  constructor(public attributes: Attributes, p?: string, end?: string) {
+    this.end = (end && end.length > 0 ? end : '\n');
+    this.pad = (p && p.length > 0 ? p : ' ');
+    this.format = this.format.bind(this);
+  }
+  end: string;
+  pad: string;
+  format(v: T): string {
+    return toFixedLength<T>(v, this.attributes, this.pad, this.end);
   }
 }
