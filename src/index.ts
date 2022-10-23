@@ -7,6 +7,7 @@ import * as readline from 'readline';
 // tslint:disable-next-line:class-name
 export class resources {
   static regex = /[^\d](\d{14})\.csv$/g;
+  static escape = '""';
 }
 export function getDate(fileName: string): Date | undefined {
   const nm = resources.regex.exec(fileName);
@@ -338,7 +339,6 @@ const re = /"/g;
 const e = '';
 const s = 'string';
 const n = 'number';
-const b = '\"';
 export function toDelimiter<T>(obj: T, separator: string, end?: string): string {
   const o: any = obj;
   const keys = Object.keys(o);
@@ -352,7 +352,7 @@ export function toDelimiter<T>(obj: T, separator: string, end?: string): string 
     } else {
       if (typeof v === s) {
         if (s.indexOf(',') >= 0) {
-          cols.push('"' + v.replace(re, b) + '"');
+          cols.push('"' + v.replace(re, resources.escape) + '"');
         } else {
           cols.push(v);
         }
@@ -388,7 +388,7 @@ export function toDelimiterWithSchema<T>(obj: T, separator: string, attrs: Attri
       } else {
         if (typeof v === s) {
           if (s.indexOf(separator) >= 0) {
-            cols.push('"' + v.replace(re, b) + '"');
+            cols.push('"' + v.replace(re, resources.escape) + '"');
           } else {
             cols.push(v);
           }
