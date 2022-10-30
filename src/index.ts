@@ -256,6 +256,11 @@ export function addDays(date: Date, days: number): Date {
   result.setDate(result.getDate() + days);
   return result;
 }
+export function mkdirSync(dir: string): void {
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir);
+  }
+}
 export async function createReader(filename: string, opts?: BufferEncoding): Promise<readline.Interface> {
   const c: BufferEncoding = (opts !== undefined ? opts : 'utf-8');
   const stream = fs.createReadStream(filename, c);
