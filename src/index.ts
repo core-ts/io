@@ -10,7 +10,8 @@ export class resources {
   static escape = '""';
 }
 export function getDate(fileName: string): Date | undefined {
-  const nm = resources.regex.exec(fileName);
+  const r = new RegExp(resources.regex);
+  const nm = r.exec(fileName);
   if (!nm || nm.length < 2) {
     return undefined;
   }
