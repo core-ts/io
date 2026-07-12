@@ -1,6 +1,6 @@
 {
   "name": "io-one",
-  "version": "0.2.5",
+  "version": "0.3.0",
   "description": "io",
   "main": "./lib/index.js",
   "types": "./src/index.ts",
