@@ -1,30 +1,16 @@
 # io-one
 
-> A lightweight, schema-driven I/O library for Node.js and TypeScript, designed for enterprise batch processing, import/export applications, and structured file generation.
+> A lightweight TypeScript library for building enterprise import/export and batch-processing applications.
 
-`io-one` provides a simple and practical API for reading files, writing files, formatting objects into CSV, TSV, delimiter-separated, and fixed-length records, along with a carefully selected set of workflow utilities that eliminate repetitive code found in real production projects.
+`io-one` provides the infrastructure required to generate structured files, including CSV, delimiter-separated, and fixed-length records, together with a carefully selected set of workflow utilities that eliminate repetitive code found in real production projects.
 
-Unlike general-purpose utility libraries, `io-one` intentionally contains only the utilities that are frequently required when building file processing applications.
+Unlike general-purpose utility libraries, **io-one** intentionally includes only the helper functions that are repeatedly needed when working with files, exports, logs, and batch jobs.
 
 ### Examples:
 - [postgres-export-sample](https://github.com/typescript-sample/postgres-export-sample): export data from Postgres to CSV.
 - [mssql-export-sample](https://github.com/typescript-sample/mssql-export-sample): export data from MS SQL to CSV.
 - [oracle-export-sample](https://github.com/typescript-sample/oracle-export-sample): export data from Oracle to CSV.
 - [mysql-export-sample](https://github.com/typescript-sample/mysql-export-sample): export data from MySql to CSV.
-
----
-
-## Features
-
-- 📄 CSV, TSV and custom delimiter formatting
-- 📋 Fixed-length record formatting
-- 📖 Async line-by-line file reader
-- ✍️ File and log writers
-- 📁 Automatic directory creation
-- 🏷 Schema-driven serialization
-- 🧩 Custom field formatting
-- 📅 Batch filename helpers
-- ⚡ Zero external runtime dependencies
 
 ---
 
@@ -42,29 +28,151 @@ yarn add io-one
 
 ---
 
-# Design Philosophy
+# Why io-one?
 
-Most production applications eventually create a shared `common/utils` folder containing utilities such as:
+In most production projects, developers eventually create a structure like this:
 
-- file name generation
-- log file naming
-- directory creation
-- CSV escaping
-- date formatting
+```text
+src
+├── modules
+│   ├── customer
+│   ├── product
+│   └── order
+└── common
+    ├── file.ts
+    ├── date.ts
+    ├── export.ts
+    ├── log.ts
+    └── utils.ts
+```
 
-These utilities are rewritten in nearly every project.
+After several projects, these helper functions become almost identical.
 
-`io-one` moves only the most frequently used workflow utilities into the library itself, allowing applications to stay smaller while avoiding the "everything is a utility" anti-pattern.
+Typical examples include:
+
+- Creating timestamped filenames
+- Creating log filenames
+- Formatting dates
+- Creating directories
+- Scanning import/export directories
+- Escaping CSV fields
+- Reading and writing text files
+
+Instead of rewriting these helpers in every application, **io-one** provides the ones that naturally belong to file-processing workflows.
 
 The goal is **not** to become another utility library.
 
-The goal is to eliminate repetitive infrastructure code that naturally belongs to file processing applications.
+The goal is to eliminate duplicated infrastructure code while keeping the library small and focused.
 
 ---
 
-# File Reader
+# Design Philosophy
 
-Read a file line by line using async iteration.
+`io-one` follows three simple principles.
+
+## 1. Keep the library simple
+
+Only include features that are commonly needed in production projects.
+
+No unnecessary abstractions.
+
+No framework.
+
+No hidden magic.
+
+---
+
+## 2. Eliminate duplicated application code
+
+Instead of every project implementing:
+
+```ts
+function createExportFilename(...)
+function createLogFilename(...)
+function createDirectory(...)
+function checkFileName(...)
+```
+
+these common workflow utilities are already available.
+
+Examples include:
+
+- `getPrefix()`
+- `dateToString()`
+- `timeToString()`
+- `NameChecker`
+- `mkdirSync()`
+
+---
+
+## 3. Focus on output
+
+`io-one` is responsible for converting objects into structured files.
+
+It intentionally does **not** perform:
+
+- SQL queries
+- Database streaming
+- Database access
+- ORM functionality
+
+Those responsibilities belong to database-specific libraries.
+
+---
+
+# Position in the Ecosystem
+
+```text
+          SQL Server
+          PostgreSQL
+            Oracle
+            SQLite
+             MySQL
+               │
+               ▼
+        sql-core adapters
+               │
+               ▼
+        Application Objects
+               │
+               ▼
+             io-one
+               │
+      ┌────────┴────────┐
+      ▼                 ▼
+ Delimiter         Fixed-Length
+ Formatter          Formatter
+      │                 │
+      └────────┬────────┘
+               ▼
+             Files
+```
+
+`io-one` is the **output layer** of the ecosystem.
+
+Database streaming belongs to provider libraries (such as `mysql2-core`) because every database driver has its own streaming implementation.
+
+---
+
+# Features
+
+- CSV formatter
+- TSV formatter
+- Custom delimiter formatter
+- Fixed-length formatter
+- Async file reader
+- File writer
+- Log writer
+- Automatic directory creation
+- Schema-driven serialization
+- Custom field formatting
+- Batch filename utilities
+- File scanning utilities
+- Zero runtime dependencies
+
+---
+
+# Read Files
 
 ```ts
 import { createReader } from "io-one"
@@ -78,12 +186,12 @@ for await (const line of reader) {
 
 ---
 
-# File Writer
+# Write Files
 
 ```ts
 import { createWriteStream, FileWriter } from "io-one"
 
-const stream = createWriteStream("./output", "export.csv")
+const stream = createWriteStream("./output", "customers.csv")
 
 const writer = new FileWriter(stream)
 
@@ -93,206 +201,95 @@ writer.end()
 
 ---
 
-# Log Writer
+# CSV Export
 
 ```ts
-import { LogWriter } from "io-one"
+import { DelimiterFormatter } from "io-one"
 
-const log = new LogWriter("application.log", "./logs")
+const formatter = new DelimiterFormatter(",", customerAttributes)
 
-log.write("Application started")
-log.write("Export completed")
-
-log.end()
+writer.write(formatter.format(customer))
 ```
 
----
-
-# Delimiter Formatter
-
-Convert an object into a CSV, TSV or any delimiter-separated format.
-
-```ts
-import { DelimiterFormatter, Attributes } from "io-one"
-
-interface User {
-    id: number
-    username: string
-    email: string
-}
-
-const attributes: Attributes = {
-    id: {},
-    username: {},
-    email: {}
-}
-
-const formatter =
-    new DelimiterFormatter<User>(
-        ",",
-        attributes
-    )
-
-const csv = formatter.format({
-    id: 1,
-    username: "john",
-    email: "john@test.com"
-})
-```
-
-Output
+Generated output
 
 ```text
-1,john,john@test.com
+1,john,john@example.com
 ```
 
 ---
 
-# Custom Formatting
+# Fixed-Length Export
 
-Each field can define its own serializer.
+```ts
+import { FixedLengthFormatter } from "io-one"
+
+const formatter = new FixedLengthFormatter(customerAttributes)
+
+writer.write(formatter.format(customer))
+```
+
+Suitable for:
+
+- Banking
+- Government systems
+- Legacy integrations
+- Batch interfaces
+
+---
+
+# Schema-Driven Formatting
 
 ```ts
 const attributes = {
     createdAt: {
-        getString: d => d.toISOString()
+        getString: value =>
+            value.toISOString()
     }
 }
 ```
+
+Each field can define its own formatter.
 
 No switch statements.
 
 No custom formatter classes.
 
-Simply customize the fields that need special formatting.
-
 ---
 
-# Fixed-Length Formatter
-
-Generate fixed-width records.
-
-```ts
-import { FixedLengthFormatter } from "io-one"
-
-const formatter = new FixedLengthFormatter(attributes)
-
-const line = formatter.format(record)
-```
-
-Useful for
-
-- banking
-- legacy systems
-- government integrations
-- batch interfaces
-
----
-
-# CSV Escaping
-
-`io-one` automatically escapes
-
-- delimiters
-- quotation marks
-- carriage returns
-- line feeds
-
-Example
-
-```text
-John,"Hello, ""World"""
-```
-
-No manual escaping is required.
-
----
-
-# Workflow Utilities
-
-## Generate Batch File Names
+# Generate Batch File Names
 
 ```ts
 import { getPrefix, timeToString } from "io-one"
 
 const now = new Date()
 
-const filename = getPrefix("EXPORT_", now) + "_" + timeToString(now) + ".csv"
+const filename = getPrefix("CUSTOMER_", now) + "_" + timeToString(now) + ".csv"
 ```
 
 Example
 
 ```text
-EXPORT_20260716_143010.csv
+CUSTOMER_20260716_143010.csv
 ```
 
 ---
 
-## Date Formatting
+# Generate Log File Names
 
 ```ts
-dateToString(new Date())
+const logFile = getPrefix("EXPORT_", new Date()) + "_" + timeToString(new Date()) + ".log"
 ```
 
 Output
 
 ```text
-20260716
-```
-
-With separator
-
-```ts
-dateToString(new Date(), "-")
-```
-
-Output
-
-```text
-2026-07-16
+EXPORT_20260716_143010.log
 ```
 
 ---
 
-## Time Formatting
-
-```ts
-timeToString(new Date())
-```
-
-Output
-
-```text
-143010
-```
-
----
-
-## Parse Timestamp from File Name
-
-```ts
-const date = getDate("CUSTOMER_20260716143010.csv")
-```
-
----
-
-## Generate Prefix with Date
-
-```ts
-const prefix = getPrefix("CUSTOMER_", new Date())
-```
-
-Output
-
-```text
-CUSTOMER_20260716
-```
-
----
-
-## NameChecker
-
-Useful when scanning directories.
+# Scan Import Directory
 
 ```ts
 const checker = new NameChecker("CUSTOMER_", ".csv")
@@ -300,9 +297,11 @@ const checker = new NameChecker("CUSTOMER_", ".csv")
 const files = getFiles(fileNames, checker.check)
 ```
 
+Useful when processing incoming batch files.
+
 ---
 
-## Create Directory
+# Create Directory
 
 ```ts
 mkdirSync("./exports")
@@ -312,20 +311,22 @@ Creates the directory recursively if it does not already exist.
 
 ---
 
-# Enterprise Example
+# Typical Workflow
 
-```ts
-const writer = new FileWriter(createWriteStream("./output", "customers.csv"))
-
-const formatter = new DelimiterFormatter(",", customerAttributes)
-
-for (const customer of customers) {
-    writer.write(
-        formatter.format(customer)
-    )
-}
-
-writer.end()
+```text
+Application Objects
+         │
+         ▼
+ DelimiterFormatter
+         │
+         ▼
+    CSV Record
+         │
+         ▼
+    FileWriter
+         │
+         ▼
+   customers.csv
 ```
 
 ---
@@ -335,13 +336,13 @@ writer.end()
 - CSV export
 - TSV export
 - Fixed-length file generation
-- ETL
 - Batch processing
-- Banking integrations
-- Legacy system interfaces
-- Scheduled jobs
-- Import/Export services
+- ETL
 - Report generation
+- Scheduled jobs
+- Legacy system integration
+- Banking interfaces
+- Import/Export applications
 
 ---
 
@@ -362,7 +363,7 @@ writer.end()
 - `DelimiterFormatter`
 - `FixedLengthFormatter`
 
-## Conversion
+## Serialization
 
 - `toDelimiter()`
 - `toDelimiterWithSchema()`
@@ -379,21 +380,21 @@ writer.end()
 - `dateToString()`
 - `timeToString()`
 - `getPrefix()`
-- `addDays()`
 - `getDate()`
+- `addDays()`
 
 ---
 
 # Why io-one?
 
-Most applications eventually accumulate dozens of helper functions under a shared `common/utils` folder.
+`io-one` is designed for developers building real production applications.
 
-`io-one` provides a carefully curated set of workflow utilities that are repeatedly needed when building file-processing applications, reducing duplicated code while keeping the library focused and lightweight.
+Instead of forcing every project to create its own `common/utils` folder, it provides a carefully selected set of workflow utilities that are repeatedly required when processing files.
 
-It is intentionally **small**, **dependency-free**, and **designed for real production workflows**, making it an excellent foundation for enterprise import/export and batch processing systems.
+The library remains intentionally **small**, **dependency-free**, and **focused on structured file generation**, making it an excellent foundation for enterprise import/export and batch-processing systems.
 
 ---
 
-## License
+# License
 
 MIT
