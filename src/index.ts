@@ -96,8 +96,8 @@ export function getFiles(files: string[], check: (s: string) => boolean): string
 // tslint:disable-next-line:max-classes-per-file
 export class NameChecker {
   constructor(
-    private prefix: string,
-    private suffix: string,
+    protected prefix: string,
+    protected suffix: string,
   ) {
     this.check = this.check.bind(this)
   }
@@ -206,7 +206,7 @@ export class FileWriter {
 }
 // tslint:disable-next-line:max-classes-per-file
 export class LogWriter {
-  private writer: WriteStream
+  protected writer: WriteStream
   suffix: string
   constructor(filename: string, dir: string, opts?: BufferEncoding | StreamOptions, suffix?: string) {
     const o = opts ? opts : options
@@ -244,7 +244,7 @@ export function createWriteStream(dir: string, filename: string, opts?: BufferEn
 const e = ""
 const s = "string"
 const n = "number"
-export function toDelimiter<T>(obj: T, separator: string, end?: string): string {
+export function toCSV<T>(obj: T, separator: string, end?: string): string {
   const o: any = obj
   const keys = Object.keys(o)
   const cols: string[] = []
@@ -256,7 +256,7 @@ export function toDelimiter<T>(obj: T, separator: string, end?: string): string 
       cols.push(e)
     } else {
       if (typeof v === s) {
-        cols.push(escapeDelimiter(v, separator))
+        cols.push(escapeCSV(v, separator))
       } else if (v instanceof Date) {
         cols.push(v.toISOString())
       } else if (typeof v === n) {
@@ -288,7 +288,7 @@ export function toCSVWithSchema<T>(obj: T, separator: string, attrs: Attributes,
         cols.push(v2)
       } else {
         if (typeof v === s) {
-          cols.push(escapeDelimiter(v, separator))
+          cols.push(escapeCSV(v, separator))
         } else if (v instanceof Date) {
           cols.push(v.toISOString())
         } else if (typeof v === n) {
@@ -306,18 +306,18 @@ export function toCSVWithSchema<T>(obj: T, separator: string, attrs: Attributes,
     return ss
   }
 }
-export function escapeDelimiter(v: string, separator: string): string {
+export function escapeCSV(v: string, separator: string): string {
   const needsQuote = v.includes(separator) || v.includes('"') || v.includes("\r") || v.includes("\n")
 
   if (!needsQuote) return v
 
-  return `"${v.replace(/"/g, '""')}"`
+  return `"${v.replace(/"/g, resources.escape)}"`
 }
 // tslint:disable-next-line:max-classes-per-file
 export class CSVFormatter<T> {
   constructor(
-    public separator: string,
-    public attributes: Attributes,
+    protected separator: string,
+    protected attributes: Attributes,
     end?: string,
   ) {
     this.end = end && end.length > 0 ? end : "\n"
@@ -327,6 +327,10 @@ export class CSVFormatter<T> {
   format(v: T): string {
     return toCSVWithSchema<T>(v, this.separator, this.attributes, this.end)
   }
+}
+export interface ICSVFieldParser<T> {
+  name: string
+  toString(data: T, key: string, v: string): void
 }
 export function pad(v: string, l: number, p: string): string {
   if (v.length > l) {
@@ -375,7 +379,7 @@ export function toFixedLength<T>(obj: T, attrs: FixedLengthAttributes, p: string
 // tslint:disable-next-line:max-classes-per-file
 export class FixedLengthFormatter<T> {
   constructor(
-    public attributes: FixedLengthAttributes,
+    protected attributes: FixedLengthAttributes,
     p?: string,
     end?: string,
   ) {
