@@ -241,7 +241,6 @@ export function createWriteStream(dir: string, filename: string, opts?: BufferEn
     return fs.createWriteStream(path.join(dir, filename), opts)
   }
 }
-const re = /"/g
 const e = ""
 const s = "string"
 const n = "number"
@@ -272,7 +271,7 @@ export function toDelimiter<T>(obj: T, separator: string, end?: string): string 
   }
   return cols.join(separator)
 }
-export function toDelimiterWithSchema<T>(obj: T, separator: string, attrs: Attributes, end?: string): string {
+export function toCSVWithSchema<T>(obj: T, separator: string, attrs: Attributes, end?: string): string {
   const o: any = obj
   const keys = Object.keys(attrs)
   const cols: string[] = []
@@ -315,7 +314,7 @@ export function escapeDelimiter(v: string, separator: string): string {
   return `"${v.replace(/"/g, '""')}"`
 }
 // tslint:disable-next-line:max-classes-per-file
-export class DelimiterFormatter<T> {
+export class CSVFormatter<T> {
   constructor(
     public separator: string,
     public attributes: Attributes,
@@ -326,7 +325,7 @@ export class DelimiterFormatter<T> {
   }
   end: string
   format(v: T): string {
-    return toDelimiterWithSchema<T>(v, this.separator, this.attributes, this.end)
+    return toCSVWithSchema<T>(v, this.separator, this.attributes, this.end)
   }
 }
 export function pad(v: string, l: number, p: string): string {
