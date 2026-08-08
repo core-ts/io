@@ -1,7 +1,7 @@
 {
-  "name": "io-one",
-  "version": "0.3.1",
-  "description": "io",
+  "name": "export-kit",
+  "version": "0.1.2",
+  "description": "export-kit",
   "main": "./lib/index.js",
   "types": "./src/index.ts",
   "scripts": {
@@ -16,12 +16,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "git@github.com/core-ts/io"
+    "url": "git@github.com/core-ts/export-kit"
   },
   "keywords": [
-    "io",
-    "io-one",
-    "io one",
-    "io utilities"
+    "export-kit",
+    "export data",
+    "io utilities",
+    "io"
   ]
 }

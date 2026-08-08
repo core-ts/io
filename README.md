@@ -1,399 +1,295 @@
-# io-one
+# export-kit
 
-> A lightweight TypeScript library for building enterprise import/export and batch-processing applications.
+**Simple, schema-driven data export library for TypeScript.**
 
-`io-one` provides the infrastructure required to generate structured files, including CSV, delimiter-separated, and fixed-length records, together with a carefully selected set of workflow utilities that eliminate repetitive code found in real production projects.
+`export-kit` helps you transform JavaScript objects into structured text formats such as **CSV** and **fixed-length records**, then write them efficiently to files. It is designed for batch jobs, scheduled exports, banking files, legacy integrations, reporting, and ETL pipelines.
 
-Unlike general-purpose utility libraries, **io-one** intentionally includes only the helper functions that are repeatedly needed when working with files, exports, logs, and batch jobs.
+Unlike full ETL frameworks, `export-kit` focuses on one responsibility:
 
-### Examples:
-- [postgres-export-sample](https://github.com/typescript-sample/postgres-export-sample): export data from Postgres to CSV.
-- [mssql-export-sample](https://github.com/typescript-sample/mssql-export-sample): export data from MS SQL to CSV.
-- [oracle-export-sample](https://github.com/typescript-sample/oracle-export-sample): export data from Oracle to CSV.
-- [mysql-export-sample](https://github.com/typescript-sample/mysql-export-sample): export data from MySql to CSV.
-
----
-
-# Installation
-
-```bash
-npm install io-one
-```
-
-or
-
-```bash
-yarn add io-one
-```
-
----
-
-# Why io-one?
-
-In most production projects, developers eventually create a structure like this:
-
-```text
-src
-├── modules
-│   ├── customer
-│   ├── product
-│   └── order
-└── common
-    ├── file.ts
-    ├── date.ts
-    ├── export.ts
-    ├── log.ts
-    └── utils.ts
-```
-
-After several projects, these helper functions become almost identical.
-
-Typical examples include:
-
-- Creating timestamped filenames
-- Creating log filenames
-- Formatting dates
-- Creating directories
-- Scanning import/export directories
-- Escaping CSV fields
-- Reading and writing text files
-
-Instead of rewriting these helpers in every application, **io-one** provides the ones that naturally belong to file-processing workflows.
-
-The goal is **not** to become another utility library.
-
-The goal is to eliminate duplicated infrastructure code while keeping the library small and focused.
-
----
-
-# Design Philosophy
-
-`io-one` follows three simple principles.
-
-## 1. Keep the library simple
-
-Only include features that are commonly needed in production projects.
-
-No unnecessary abstractions.
-
-No framework.
-
-No hidden magic.
-
----
-
-## 2. Eliminate duplicated application code
-
-Instead of every project implementing:
-
-```ts
-function createExportFilename(...)
-function createLogFilename(...)
-function createDirectory(...)
-function checkFileName(...)
-```
-
-these common workflow utilities are already available.
-
-Examples include:
-
-- `getPrefix()`
-- `dateToString()`
-- `timeToString()`
-- `NameChecker`
-- `mkdirSync()`
-
----
-
-## 3. Focus on output
-
-`io-one` is responsible for converting objects into structured files.
-
-It intentionally does **not** perform:
-
-- SQL queries
-- Database streaming
-- Database access
-- ORM functionality
-
-Those responsibilities belong to database-specific libraries.
-
----
-
-# Position in the Ecosystem
-
-```text
-          SQL Server
-          PostgreSQL
-            Oracle
-            SQLite
-             MySQL
-               │
-               ▼
-        sql-core adapters
-               │
-               ▼
-        Application Objects
-               │
-               ▼
-             io-one
-               │
-      ┌────────┴────────┐
-      ▼                 ▼
- Delimiter         Fixed-Length
- Formatter          Formatter
-      │                 │
-      └────────┬────────┘
-               ▼
-             Files
-```
-
-`io-one` is the **output layer** of the ecosystem.
-
-Database streaming belongs to provider libraries (such as `mysql2-core`) because every database driver has its own streaming implementation.
+> **Convert objects into export formats with minimal code.**
 
 ---
 
 # Features
 
-- CSV formatter
-- TSV formatter
-- Custom delimiter formatter
-- Fixed-length formatter
-- Async file reader
-- File writer
-- Log writer
-- Automatic directory creation
-- Schema-driven serialization
+- CSV export
+- Fixed-length record export
+- Schema-driven formatting
 - Custom field formatting
-- Batch filename utilities
-- File scanning utilities
+- File writing utilities
+- Streaming support
+- Async file reader
+- Date and time helpers
 - Zero runtime dependencies
+- Fully written in TypeScript
 
 ---
 
-# Read Files
+# Why export-kit?
 
-```ts
-import { createReader } from "io-one"
+Many Node.js libraries can write files.
 
-const reader = await createReader("customers.csv")
+Many libraries can generate CSV.
 
-for await (const line of reader) {
-    console.log(line)
-}
-```
+Few libraries provide a reusable **export framework**.
 
----
-
-# Write Files
-
-```ts
-import { createWriteStream, FileWriter } from "io-one"
-
-const stream = createWriteStream("./output", "customers.csv")
-
-const writer = new FileWriter(stream)
-
-writer.write("Hello")
-writer.end()
-```
-
----
-
-# CSV Export
-
-```ts
-import { DelimiterFormatter } from "io-one"
-
-const formatter = new DelimiterFormatter(",", customerAttributes)
-
-writer.write(formatter.format(customer))
-```
-
-Generated output
+`export-kit` separates **how data is formatted** from **how data is written**, making export logic reusable across applications.
 
 ```text
-1,john,john@example.com
+ Business Object
+        │
+        ▼
+ Export Formatter
+        │
+        ▼
+  Formatted Text
+        │
+        ▼
+   File Writer
+        │
+        ▼
+     Output
 ```
+
+This separation allows the same business object to be exported into different formats without changing business logic.
 
 ---
 
-# Fixed-Length Export
+# Supported Export Formats
 
-```ts
-import { FixedLengthFormatter } from "io-one"
+## CSV
 
-const formatter = new FixedLengthFormatter(customerAttributes)
-
-writer.write(formatter.format(customer))
+```text
+   User
+     │
+     ▼
+CSVFormatter
+     │
+     ▼
+ CSV Text
 ```
 
-Suitable for:
+Supports:
 
-- Banking
-- Government systems
-- Legacy integrations
-- Batch interfaces
+- Configurable separators
+- Automatic escaping
+- ISO date formatting
+- Custom field formatting
+
+---
+
+## Fixed-Length Records
+
+```text
+       User
+         │
+         ▼
+FixedLengthFormatter
+         │
+         ▼
+ Fixed-Length Text
+```
+
+Supports:
+
+- Configurable field widths
+- Automatic padding
+- Custom formatting
+- Banking and legacy system exports
+
+---
+
+# Architecture
+
+```text
+                    Attributes
+                         │
+         ┌───────────────┴───────────────┐
+         │                               │
+         ▼                               ▼
+  CSVFormatter                FixedLengthFormatter
+         │                               │
+         └───────────────┬───────────────┘
+                         │
+                  Formatted String
+                         │
+                 Stream File Writer 
+                         │
+                         ▼
+                    Output File
+```
+
+The formatter is responsible only for converting objects into text.
+
+The writer is responsible only for writing text.
+
+This separation keeps export logic independent from file I/O.
 
 ---
 
 # Schema-Driven Formatting
 
-```ts
+Instead of manually building CSV strings, define a schema describing how each field should be exported.
+
+```typescript
 const attributes = {
-    createdAt: {
-        getString: value =>
-            value.toISOString()
-    }
+  id: {},
+  name: {},
+  birthday: {},
+  salary: {
+    getString: value => `$${value}`
+  }
 }
 ```
 
-Each field can define its own formatter.
+The formatter automatically converts each object according to the schema.
 
-No switch statements.
+Benefits include:
 
-No custom formatter classes.
+- Reusable export definitions
+- Centralized formatting rules
+- Consistent exports
+- Easier maintenance
 
 ---
 
-# Generate Batch File Names
+# Custom Field Formatting
 
-```ts
-import { getPrefix, timeToString } from "io-one"
-
-const now = new Date()
-
-const filename = getPrefix("CUSTOMER_", now) + "_" + timeToString(now) + ".csv"
-```
-
-Example
+Each attribute may define its own formatter.
 
 ```text
-CUSTOMER_20260716_143010.csv
+Database Value
+
+      1000
+        │
+        ▼
+   getString()
+        │
+        ▼
+     "$1000"
 ```
+
+This makes it easy to customize:
+
+- Currency
+- Dates
+- Enums
+- Booleans
+- Identifiers
+
+without changing export logic.
 
 ---
 
-# Generate Log File Names
+# CSV Escaping
 
-```ts
-const logFile = getPrefix("EXPORT_", new Date()) + "_" + timeToString(new Date()) + ".log"
-```
+CSV fields are automatically escaped when necessary.
 
-Output
+Supports values containing:
+
+- Separators
+- Quotation marks
+- Carriage returns
+- Newlines
+
+This ensures generated CSV files remain compatible with standard spreadsheet applications.
+
+---
+
+# File Writing
+
+`export-kit` provides lightweight file writing utilities suitable for batch processing.
 
 ```text
-EXPORT_20260716_143010.log
+Formatter
+    │
+    ▼
+FileWriter
+    │
+    ▼
+  Disk
 ```
+
+For logging scenarios, `LogWriter` provides buffered writing with configurable line endings.
 
 ---
 
-# Scan Import Directory
+# Streaming Support
 
-```ts
-const checker = new NameChecker("CUSTOMER_", ".csv")
-
-const files = getFiles(fileNames, checker.check)
-```
-
-Useful when processing incoming batch files.
-
----
-
-# Create Directory
-
-```ts
-mkdirSync("./exports")
-```
-
-Creates the directory recursively if it does not already exist.
-
----
-
-# Typical Workflow
+Large exports can be written incrementally instead of generating the entire file in memory.
 
 ```text
-Application Objects
-         │
-         ▼
- DelimiterFormatter
-         │
-         ▼
-    CSV Record
-         │
-         ▼
-    FileWriter
-         │
-         ▼
-   customers.csv
+  Object
+     │
+     ▼
+ Formatter
+     │
+     ▼
+Write Stream
+     │
+     ▼
+    File
 ```
+
+This approach is suitable for exporting millions of records while keeping memory usage low.
+
+---
+
+# Utility Functions
+
+The library also includes small helpers commonly used in export jobs:
+
+- Date formatting
+- Time formatting
+- Filename date extraction
+- Date arithmetic
+- Directory creation
+- Async line reader
+
+These utilities support typical batch-processing workflows without introducing additional dependencies.
 
 ---
 
 # Typical Use Cases
 
-- CSV export
-- TSV export
-- Fixed-length file generation
-- Batch processing
-- ETL
-- Report generation
-- Scheduled jobs
+- Scheduled data exports
+- CSV report generation
+- Banking files
+- Payroll exports
 - Legacy system integration
-- Banking interfaces
-- Import/Export applications
+- ETL pipelines
+- Data migration
+- Batch processing
+- Regulatory reporting
+- Enterprise data exchange
 
 ---
 
-# API Overview
+# Design Principles
 
-## Readers
+`export-kit` is built around a few simple principles:
 
-- `createReader()`
-
-## Writers
-
-- `createWriteStream()`
-- `FileWriter`
-- `LogWriter`
-
-## Formatters
-
-- `DelimiterFormatter`
-- `FixedLengthFormatter`
-
-## Serialization
-
-- `toDelimiter()`
-- `toDelimiterWithSchema()`
-- `toFixedLength()`
-
-## File Utilities
-
-- `mkdirSync()`
-- `getFiles()`
-- `NameChecker`
-
-## Date Utilities
-
-- `dateToString()`
-- `timeToString()`
-- `getPrefix()`
-- `getDate()`
-- `addDays()`
+- Single responsibility
+- Schema-driven formatting
+- Small, composable APIs
+- Reusable export definitions
+- Minimal dependencies
+- Type-safe interfaces
+- Production-ready performance
 
 ---
 
-# Why io-one?
+# When to Use export-kit
 
-`io-one` is designed for developers building real production applications.
+Choose `export-kit` when you need to:
 
-Instead of forcing every project to create its own `common/utils` folder, it provides a carefully selected set of workflow utilities that are repeatedly required when processing files.
+- Export business objects to CSV
+- Generate fixed-length files
+- Centralize export rules
+- Build reusable export pipelines
+- Process large datasets efficiently
 
-The library remains intentionally **small**, **dependency-free**, and **focused on structured file generation**, making it an excellent foundation for enterprise import/export and batch-processing systems.
-
----
+If you need a lightweight, focused library for object-to-file export, `export-kit` provides the essential building blocks without requiring a full ETL framework.
 
 # License
 
