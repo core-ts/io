@@ -9,7 +9,6 @@
     "clean:lib": "rimraf lib"
   },
   "devDependencies": {
-    "tslint": "5.10.0",
     "typescript": "^3.3.3333"
   },
   "publishConfig": {
