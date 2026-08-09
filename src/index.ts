@@ -1,29 +1,11 @@
-import { once } from "events"
 import * as fs from "fs"
 import { WriteStream } from "fs"
 import * as promises from "node:fs/promises"
 import path from "node:path"
-import * as readline from "readline"
 
 // tslint:disable-next-line:class-name
 export class resources {
-  static regex = /[^\d](\d{14})\.csv$/
   static escape = '""'
-}
-export function getDate(fileName: string): Date | undefined {
-  const r = new RegExp(resources.regex)
-  const nm = r.exec(fileName)
-  if (!nm || nm.length < 2) {
-    return undefined
-  }
-  const v = nm[1]
-  const ft = `${v.slice(0, 4)}-${v.slice(4, 6)}-${v.slice(6, 8)}T${v.slice(8, 10)}:${v.slice(10, 12)}:${v.slice(12, 14)}`
-  const d = new Date(ft)
-  const num = d.getTime()
-  if (!num || isNaN(num)) {
-    return undefined
-  }
-  return d
 }
 
 export interface SimpleMap {
@@ -69,39 +51,6 @@ export interface FixedLengthAttributes {
   [key: string]: FixedLengthAttribute
 }
 
-// tslint:disable-next-line:ban-types
-export function buildStrings(files: string[]): string[] {
-  const res: string[] = []
-  for (const file of files) {
-    res.push(file.toString())
-  }
-  return res
-}
-export function getFiles(files: string[], check: (s: string) => boolean): string[] {
-  const res: string[] = []
-  for (const file of files) {
-    const v = check(file)
-    if (v === true) {
-      res.push(file)
-    }
-  }
-  return res
-}
-// tslint:disable-next-line:max-classes-per-file
-export class NameChecker {
-  constructor(
-    protected prefix: string,
-    protected suffix: string,
-  ) {
-    this.check = this.check.bind(this)
-  }
-  check(name: string): boolean {
-    if (name.startsWith(this.prefix) && name.endsWith(this.suffix)) {
-      return true
-    }
-    return false
-  }
-}
 export function getPrefix(v: string, date: Date, offset?: number, separator?: string): string {
   if (offset !== undefined) {
     const d = addDays(date, offset)
@@ -155,13 +104,6 @@ export function mkdirSync(dir: string): void {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true })
   }
-}
-export async function createReader(filename: string, opts?: BufferEncoding): Promise<AsyncIterable<string>> {
-  const c: BufferEncoding = opts !== undefined ? opts : "utf-8"
-  const stream = fs.createReadStream(filename, c)
-  await Promise.all([once(stream, "open")])
-  const read = readline.createInterface({ input: stream, crlfDelay: Infinity })
-  return read
 }
 export interface StreamOptions {
   flags?: string | undefined
@@ -283,10 +225,10 @@ export function toCSVWithSchema<T>(obj: T, separator: string, attrs: Attributes,
       } else {
         if (typeof v === s) {
           cols.push(escapeCSV(v, separator))
-        } else if (v instanceof Date) {
-          cols.push(v.toISOString())
         } else if (typeof v === n) {
           cols.push(v.toString())
+        } else if (v instanceof Date) {
+          cols.push(v.toISOString())
         } else {
           cols.push("" + v)
         }
@@ -350,10 +292,10 @@ export function toFixedLength<T>(obj: T, attrs: FixedLengthAttributes, p: string
       } else {
         if (typeof v === s) {
           v2 = v
-        } else if (v instanceof Date) {
-          v2 = v.toISOString()
         } else if (typeof v === n) {
           v2 = v.toString()
+        } else if (v instanceof Date) {
+          v2 = v.toISOString()
         } else {
           v2 = "" + v
         }
@@ -381,5 +323,12 @@ export class FixedLengthFormatter<T> {
   pad: string
   format(v: T): string {
     return toFixedLength<T>(v, this.attributes, this.pad, this.end)
+  }
+}
+export function toString(v: any): string {
+  if (typeof v === "string") {
+    return v
+  } else {
+    return JSON.stringify(v)
   }
 }
