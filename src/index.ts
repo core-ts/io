@@ -68,12 +68,6 @@ export interface Attributes {
 export interface FixedLengthAttributes {
   [key: string]: FixedLengthAttribute
 }
-export interface Parser<T> {
-  parse: (data: string) => Promise<T>
-}
-export interface Transformer<T> {
-  transform: (data: string) => Promise<T>
-}
 
 // tslint:disable-next-line:ban-types
 export function buildStrings(files: string[]): string[] {
@@ -327,10 +321,6 @@ export class CSVFormatter<T> {
   format(v: T): string {
     return toCSVWithSchema<T>(v, this.separator, this.attributes, this.end)
   }
-}
-export interface ICSVFieldParser<T> {
-  name: string
-  toString(data: T, key: string, v: string): void
 }
 export function pad(v: string, l: number, p: string): string {
   if (v.length > l) {
