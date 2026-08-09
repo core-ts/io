@@ -310,8 +310,8 @@ export function escapeCSV(v: string, separator: string): string {
 // tslint:disable-next-line:max-classes-per-file
 export class CSVFormatter<T> {
   constructor(
-    protected separator: string,
     protected attributes: Attributes,
+    protected separator: string,
     end?: string,
   ) {
     this.end = end && end.length > 0 ? end : "\n"
