@@ -11,31 +11,7 @@ export class resources {
 export interface SimpleMap {
   [key: string]: string | number | boolean | Date
 }
-export type DataType =
-  | "ObjectId"
-  | "date"
-  | "datetime"
-  | "time"
-  | "boolean"
-  | "number"
-  | "integer"
-  | "string"
-  | "text"
-  | "object"
-  | "array"
-  | "binary"
-  | "primitives"
-  | "booleans"
-  | "numbers"
-  | "integers"
-  | "strings"
-  | "dates"
-  | "datetimes"
-  | "times"
-
 export interface BaseAttribute {
-  type?: DataType
-  default?: string | number | Date | boolean
   getString?: (v: any) => string
 }
 export interface Attribute extends BaseAttribute {
@@ -121,20 +97,12 @@ export interface StreamOptions {
 export const options: StreamOptions = { flags: "a", encoding: "utf-8" }
 // tslint:disable-next-line:max-classes-per-file
 export class FileWriter {
-  // suffix: string;
   constructor(protected writer: WriteStream) {
-    // this.suffix = (suffix ? suffix : '\n');
     this.write = this.write.bind(this)
-    this.flush = this.flush.bind(this)
     this.end = this.end.bind(this)
   }
-  write(chunk: any): boolean {
-    const b1 = this.writer.write(chunk)
-    // const b2 = this.writer.write(this.suffix);
-    return b1
-  }
-  flush(cb?: () => void): void {
-    this.writer.end(cb)
+  write(chunk: string | Buffer | Uint8Array): boolean {
+    return this.writer.write(chunk)
   }
   end(cb?: () => void): void {
     this.writer.end(cb)
@@ -143,71 +111,29 @@ export class FileWriter {
 // tslint:disable-next-line:max-classes-per-file
 export class LogWriter {
   protected writer: WriteStream
-  suffix: string
+  protected suffix: string
   constructor(filename: string, dir: string, opts?: BufferEncoding | StreamOptions, suffix?: string) {
     const o = opts ? opts : options
     this.suffix = suffix ? suffix : "\n"
     this.writer = createWriteStream(dir, filename, o)
-    this.writer.cork()
     this.write = this.write.bind(this)
-    this.flush = this.flush.bind(this)
-    this.uncork = this.uncork.bind(this)
     this.end = this.end.bind(this)
   }
-  write(data: string): void {
-    this.writer.write(data + this.suffix)
+  write(data: string): boolean {
+    return this.writer.write(data + this.suffix)
   }
-  flush(): void {
-    this.writer.uncork()
-  }
-  uncork(): void {
-    this.writer.uncork()
-  }
-  end(): void {
-    this.writer.end()
+  end(cb?: () => void): void {
+    this.writer.end(cb)
   }
 }
 export function createWriteStream(dir: string, filename: string, opts?: BufferEncoding | StreamOptions): WriteStream {
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true })
-  }
-  if (dir.endsWith("/") || dir.endsWith("\\")) {
-    return fs.createWriteStream(dir + filename, opts)
-  } else {
-    return fs.createWriteStream(path.join(dir, filename), opts)
-  }
+  fs.mkdirSync(dir, { recursive: true })
+  return fs.createWriteStream(path.join(dir, filename), opts)
 }
 const e = ""
 const s = "string"
 const n = "number"
-export function toCSV<T>(obj: T, separator: string, end?: string): string {
-  const o: any = obj
-  const keys = Object.keys(o)
-  const cols: string[] = []
-  // tslint:disable-next-line:prefer-for-of
-  for (let i = 0; i < keys.length; i++) {
-    const name = keys[i]
-    const v = o[name]
-    if (v == null) {
-      cols.push(e)
-    } else {
-      if (typeof v === s) {
-        cols.push(escapeCSV(v, separator))
-      } else if (v instanceof Date) {
-        cols.push(v.toISOString())
-      } else if (typeof v === n) {
-        cols.push(v.toString())
-      } else {
-        cols.push("" + v)
-      }
-    }
-  }
-  if (end && end.length > 0) {
-    cols.push(end)
-  }
-  return cols.join(separator)
-}
-export function toCSVWithSchema<T>(obj: T, separator: string, attrs: Attributes, end?: string): string {
+export function toCSV<T>(obj: T, separator: string, attrs: Attributes, end?: string): string {
   const o: any = obj
   const keys = Object.keys(attrs)
   const cols: string[] = []
@@ -261,7 +187,7 @@ export class CSVFormatter<T> {
   }
   end: string
   format(v: T): string {
-    return toCSVWithSchema<T>(v, this.separator, this.attributes, this.end)
+    return toCSV<T>(v, this.separator, this.attributes, this.end)
   }
 }
 export function pad(v: string, l: number, p: string): string {

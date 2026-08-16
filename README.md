@@ -1,5 +1,6 @@
 # export-kit
 
+
 **Simple, schema-driven data export library for TypeScript.**
 
 `export-kit` helps you transform JavaScript objects into structured text formats such as **CSV** and **fixed-length records**, then write them efficiently to files. It is designed for batch jobs, scheduled exports, banking files, legacy integrations, reporting, and ETL pipelines.
@@ -22,11 +23,26 @@ CSV Formatter    Fixed Length Formatter     FileWriter          LogWriter
        │                   │
    CSV text         fixed-width text
 ```
+New version:
 
----
+A lightweight TypeScript utility library for file writing, date/time formatting, CSV serialization, and fixed-length record generation.
 
-# Features
+The library provides both functional APIs and reusable formatter classes, making it suitable for batch exports, logging, file generation, and integration with systems that require CSV or fixed-width records.
 
+## Features
+
+* Recursive directory creation
+* File and log stream writers
+* Custom value conversion through `getString`
+* Configurable CSV serialization
+* Fixed-length record serialization
+* Reusable CSV and fixed-length formatter classes
+* Date formatting with optional separators
+* Time formatting with optional separators
+* Date arithmetic with `addDays`
+* Minimal dependencies and lightweight implementation
+
+old:
 - Date/time formatting
 - Filename prefix generation
 - File writing
@@ -34,7 +50,7 @@ CSV Formatter    Fixed Length Formatter     FileWriter          LogWriter
 - Fixed-length serialization
 - Custom value conversion through `getString`
 - Formatting classes implementing a common `format()` shape
-- Zero runtime dependencies 
+- Zero runtime dependencies
 
 ### Examples:
 - [postgres-export-sample](https://github.com/typescript-sample/postgres-export-sample): export data from Postgres to CSV.
@@ -43,9 +59,7 @@ CSV Formatter    Fixed Length Formatter     FileWriter          LogWriter
 - [mysql-export-csv-sample](https://github.com/typescript-sample/mysql-export-csv-sample): export data from MySql to CSV.
 - [mysql-export-sample](https://github.com/typescript-sample/mysql-export-sample): export data from MySql to fixed-length format file.
 
----
-
-# Installation
+## Installation
 
 ```bash
 npm install export-kit
@@ -57,40 +71,429 @@ or
 yarn add export-kit
 ```
 
----
+## Design
 
-# Why export-kit?
-
-Many Node.js libraries can write files.
-
-Many libraries can generate CSV.
-
-Few libraries provide a reusable **export framework**.
-
-`export-kit` separates **how data is formatted** from **how data is written**, making export logic reusable across applications.
+The library deliberately keeps serialization logic independent from file output.
 
 ```text
-             Business Object
-                   │
-       ┌───────────┴───────────┐
-       │                       │
-       ▼                       ▼
-CSV Formatter         Fixed Length Formatter
-       │                       │
-       │                       │
-   CSV text             fixed-width text
-       └───────────┬───────────┘
-                   │
-                   ▼
-               File Writer
-                   │             
-                   ▼
-                  File
+Object
+  │
+  ├── CSV schema ──────────────► CSV string
+  │                               │
+  │                               └──► CSVFormatter
+  │
+  └── Fixed-length schema ─────► Fixed-width string
+                                  │
+                                  └──► FixedLengthFormatter
+
+String/data
+  │
+  ├── FileWriter
+  └── LogWriter
+          │
+          └── Node.js WriteStream
 ```
 
-This separation allows the same business object to be exported into different formats without changing business logic.
+This makes the formatting functions useful independently of the file-writing layer.
 
-# Ecosystem Integration
+## File Writing
+
+### `createWriteStream`
+
+Creates the destination directory when necessary and returns a Node.js `WriteStream`.
+
+```ts
+import { createWriteStream } from "export-kit"
+
+const writer = createWriteStream("./output", "data.txt")
+
+writer.write("hello\n")
+writer.end()
+```
+
+The default stream options append to the file using UTF-8 encoding:
+
+```ts
+{
+  flags: "a",
+  encoding: "utf-8"
+}
+```
+
+Custom stream options can be provided.
+
+### `FileWriter`
+
+`FileWriter` is a small wrapper around a `WriteStream`.
+
+```ts
+import { FileWriter, createWriteStream } from "export-kit"
+
+const writer = new FileWriter(
+  createWriteStream("./output", "data.txt")
+)
+
+writer.write("hello\n")
+writer.end()
+```
+
+### `LogWriter`
+
+`LogWriter` appends a configurable suffix to every write. The default suffix is a newline.
+
+```ts
+import { LogWriter } from "export-kit"
+
+const writer = new LogWriter("application.log", "./logs")
+
+writer.write("Application started")
+writer.write("Application stopped")
+writer.end()
+```
+
+The resulting file contains:
+
+```text
+Application started
+Application stopped
+```
+
+A custom suffix can be supplied:
+
+```ts
+const writer = new LogWriter(
+  "data.txt",
+  "./output",
+  undefined,
+  "|"
+)
+
+writer.write("one")
+writer.write("two")
+```
+
+
+## Types
+
+### `Attribute`
+
+```ts
+interface Attribute {
+  getString?: (v: any) => string
+  length?: number
+}
+```
+
+### `FixedLengthAttribute`
+
+```ts
+interface FixedLengthAttribute {
+  getString?: (v: any) => string
+  length: number
+}
+```
+
+### `Attributes`
+
+```ts
+interface Attributes {
+  [key: string]: Attribute
+}
+```
+
+### `FixedLengthAttributes`
+
+```ts
+interface FixedLengthAttributes {
+  [key: string]: FixedLengthAttribute
+}
+```
+
+### `StreamOptions`
+
+A stream options interface matching the supported Node.js write stream configuration.
+
+## CSV Formatting
+
+CSV output is controlled by an attribute schema. The schema also determines the column order.
+
+```ts
+import { toCSV } from "export-kit"
+
+const schema = {
+  id: {},
+  name: {},
+  active: {}
+}
+
+const value = {
+  id: 1001,
+  name: "John",
+  active: true
+}
+
+const csv = toCSV(value, ",", schema)
+
+console.log(csv)
+// 1001,John,true
+```
+
+### Custom Value Conversion
+
+Each attribute can define a `getString` function.
+
+```ts
+import {
+  dateToString,
+  toCSV
+} from "export-kit"
+
+const schema = {
+  id: {},
+  name: {},
+  createdAt: {
+    getString: (value: Date) => dateToString(value, "-")
+  }
+}
+
+const value = {
+  id: 1001,
+  name: "John",
+  createdAt: new Date(2026, 7, 18)
+}
+
+const csv = toCSV(value, ",", schema)
+
+console.log(csv)
+// 1001,John,2026-08-18
+```
+
+### CSV Escaping
+
+String values are automatically escaped when they contain:
+
+* The configured separator
+* A double quote
+* A carriage return
+* A newline
+
+For example:
+
+```ts
+const schema = {
+  name: {}
+}
+
+const value = {
+  name: 'John "Smith"'
+}
+
+console.log(toCSV(value, ",", schema))
+// "John ""Smith"""
+```
+
+### `CSVFormatter`
+
+`CSVFormatter` is useful when the same schema is used repeatedly.
+
+```ts
+import { CSVFormatter } from "export-kit"
+
+const formatter = new CSVFormatter(
+  {
+    id: {},
+    name: {}
+  },
+  ","
+)
+
+console.log(formatter.format({
+  id: 1,
+  name: "Alice"
+}))
+
+console.log(formatter.format({
+  id: 2,
+  name: "Bob"
+}))
+```
+
+By default, each formatted record ends with `\n`.
+
+A custom record terminator can be supplied:
+
+```ts
+const formatter = new CSVFormatter(
+  {
+    id: {},
+    name: {}
+  },
+  ",",
+  "\r\n"
+)
+```
+
+## Fixed-Length Records
+
+The library can generate fixed-length records using a schema that defines the length of every field.
+
+```ts
+import { toFixedLength } from "export-kit"
+
+const schema = {
+  id: {
+    length: 5
+  },
+  name: {
+    length: 10
+  }
+}
+
+const value = {
+  id: "123",
+  name: "Alice"
+}
+
+const result = toFixedLength(
+  value,
+  schema,
+  " "
+)
+
+console.log(result)
+// "  123     Alice"
+```
+
+Fields are left-padded using the configured padding character.
+
+### Custom Conversion
+
+As with CSV formatting, attributes can provide `getString`.
+
+```ts
+const schema = {
+  id: {
+    length: 8,
+    getString: (value: number) => value.toString()
+  },
+  name: {
+    length: 20
+  }
+}
+```
+
+### `FixedLengthFormatter`
+
+For repeated formatting with the same schema:
+
+```ts
+import { FixedLengthFormatter } from "export-kit"
+
+const formatter = new FixedLengthFormatter(
+  {
+    id: { length: 8 },
+    name: { length: 20 }
+  }
+)
+
+const record = formatter.format({
+  id: 123,
+  name: "Alice"
+})
+```
+
+The default padding character is a space and the default record terminator is `\n`.
+
+Custom values can be supplied:
+
+```ts
+const formatter = new FixedLengthFormatter(
+  {
+    id: { length: 8 },
+    name: { length: 20 }
+  },
+  "0",
+  "\r\n"
+)
+```
+
+
+## Date Utilities
+
+### `dateToString`
+
+Formats a `Date` as `YYYYMMDD` or `YYYY-MM-DD` when a separator is supplied.
+
+```ts
+import { dateToString } from "export-kit"
+
+const date = new Date(2026, 7, 18)
+
+console.log(dateToString(date))
+// 20260818
+
+console.log(dateToString(date, "-"))
+// 2026-08-18
+```
+
+### `timeToString`
+
+Formats a `Date` as `HHMMSS` or `HH:MM:SS`.
+
+```ts
+import { timeToString } from "export-kit"
+
+console.log(timeToString(new Date()))
+// 235901
+
+console.log(timeToString(new Date(), ":"))
+// 23:59:01
+```
+
+### `addDays`
+
+Creates a new `Date` with the specified number of days added.
+
+```ts
+import { addDays } from "export-kit"
+
+const tomorrow = addDays(new Date(), 1)
+const previousDay = addDays(new Date(), -1)
+```
+
+### `getPrefix`
+
+Combines a prefix with a formatted date, optionally applying a day offset.
+
+```ts
+import { getPrefix } from "export-kit"
+
+const prefix = getPrefix("orders_", new Date())
+// orders_20260818
+
+const previous = getPrefix("orders_", new Date(), -1)
+// orders_20260817
+```
+
+## Utility Functions
+
+The following functions are exported:
+
+```ts
+getPrefix
+dateToString
+timeToString
+addDays
+mkdirSync
+createWriteStream
+toCSV
+escapeCSV
+pad
+toFixedLength
+toString
+```
+
+## Ecosystem Integration
 
 Several [**core-ts**](https://github.com/core-ts) libraries can work together.
 
@@ -144,7 +547,7 @@ Each library focuses on a single responsibility.
 
 This is a good example of **small libraries composed into an application rather than one giant framework**.
 
-## Relationship with `pg-exporter`
+### Relationship with `pg-exporter`
 ```text
                 pg-exporter
                      │
@@ -170,6 +573,51 @@ This is a good example of **small libraries composed into an application rather 
 This is a **very good layering**.
 
 `pg-exporter` shouldn't need to know how CSV or fixed-width serialization works, while `export-kit` shouldn't need to know anything about PostgreSQL.
+
+## License
+
+MIT
+
+# export-kit
+
+---
+
+# Features
+
+
+
+---
+
+# Why export-kit?
+
+Many Node.js libraries can write files.
+
+Many libraries can generate CSV.
+
+Few libraries provide a reusable **export framework**.
+
+`export-kit` separates **how data is formatted** from **how data is written**, making export logic reusable across applications.
+
+```text
+             Business Object
+                   │
+       ┌───────────┴───────────┐
+       │                       │
+       ▼                       ▼
+CSV Formatter         Fixed Length Formatter
+       │                       │
+       │                       │
+   CSV text             fixed-width text
+       └───────────┬───────────┘
+                   │
+                   ▼
+               File Writer
+                   │             
+                   ▼
+                  File
+```
+
+This separation allows the same business object to be exported into different formats without changing business logic.
 
 ---
 
